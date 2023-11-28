@@ -1,6 +1,7 @@
 from django.db import models
 
 from docs.models import Doc
+from users.models import UserProfile
 
 class Event(models.Model):
 
@@ -19,6 +20,12 @@ class Event(models.Model):
     datetime_start = models.BigIntegerField(default=0)
     datetime_end = models.BigIntegerField(blank=True, null=True)
     description = models.CharField(max_length=300, blank=True, null=True)
+    organizer = models.ForeignKey(
+        to=UserProfile, 
+        on_delete=models.CASCADE,
+        null=True, 
+        blank=True
+    )
     is_complete = models.BooleanField(default=False)
     secret_code = models.CharField(max_length=8, blank=True, null=True)
     docs = models.ManyToManyField(Doc, through='EventDoc')
