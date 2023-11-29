@@ -61,5 +61,5 @@ class AccountDataView(APIView):
 
         return Response(
             {'data': data},
-            status=status.HTTP_200_OK
+            status=status.HTTP_200_OK if data is not None else status.HTTP_401_UNAUTHORIZED
         )
