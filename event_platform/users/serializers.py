@@ -6,7 +6,7 @@ from .models import UserProfile, UserPassport
 class UserProfileSerializer(ModelSerializer):
     class Meta:
         model = UserProfile
-        fields = ('email', 'phone', 'telegram', 'organization', 'name', 'surname', 'middle_name')
+        fields = ('email', 'phone', 'telegram', 'organization', 'name')
 
 
 class UserPassportSerializer(ModelSerializer):

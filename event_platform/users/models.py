@@ -6,7 +6,7 @@ from django.core.validators import RegexValidator
 class UserProfile(models.Model):
     email = models.EmailField()
     phone_regex = RegexValidator(
-        regex=r'^[0-9]{8,16}$'
+        regex=r'^[+]{1}[0-9]{8,16}$'
     )
     phone = models.CharField(
         validators=[phone_regex], 
@@ -27,15 +27,6 @@ class UserProfile(models.Model):
     name = models.CharField(
         default='',
         max_length=30
-    )
-    surname = models.CharField(
-        default='',
-        max_length=40
-    )
-    middle_name = models.CharField(
-        max_length=50,
-        blank=True,
-        null=True
     )
 
 

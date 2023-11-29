@@ -5,9 +5,10 @@ from django.db.transaction import atomic
 from django.contrib.auth import authenticate, login, logout
 from rest_framework import status
 from django.contrib.auth.models import AnonymousUser
+from rest_framework.permissions import IsAuthenticated
 
 from .models import UserProfile, UserPassport
-from .forms import UserPassportForm, UserProfileForm
+from .forms import UserPassportForm
 from .serializers import UserPassportSerializer, UserProfileSerializer
 
 
@@ -31,7 +32,8 @@ class LoginView(APIView):
             
         return Response(
             {'message': message}, 
-            status=response_status
+            status=response_status,
+            content_type='application/json'
         )
 
 
@@ -40,11 +42,15 @@ class LogoutView(APIView):
         logout(request)
         return Response(
             {'message': 'Вы вышли из системы!'}, 
-            status=status.HTTP_200_OK
+            status=status.HTTP_200_OK,
+            content_type='application/json'
         )
 
 
 class AccountDataView(APIView):
+    authentication_classes = [SessionAuthentication, BasicAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
         # new_user = UserPassport()
         # new_user.username = ''
@@ -61,5 +67,26 @@ class AccountDataView(APIView):
 
         return Response(
             {'data': data},
-            status=status.HTTP_200_OK if data is not None else status.HTTP_401_UNAUTHORIZED
+            status=status.HTTP_200_OK if data is not None else status.HTTP_401_UNAUTHORIZED,
+            content_type='application/json'
         )
+
+    def put(self, request):
+        if type(request.user) != AnonymousUser:
+            found_passport = UserPassport.objects.filter(username=request.user.username)
+            if len(found_passport) != 0:
+                user_profile_serializer = UserProfileSerializer(found_passport[0].user, data=request.data)
+                if user_profile_serializer.is_valid():
+                    user_profile_serializer.save()
+                    response_status = status.HTTP_200_OK
+                else:
+                    response_status = status.HTTP_400_BAD_REQUEST
+                
+        else:
+            response_status = status.HTTP_401_UNAUTHORIZED
+
+        return Response(
+            {'data': ''},
+            status=response_status,
+            content_type='application/json'
+        ) 
