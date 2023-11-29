@@ -12,4 +12,4 @@ class UserProfileForm(forms.ModelForm):
 class UserPassportForm(forms.ModelForm):
     class Meta:
         model = UserPassport
-        fields = ('username', 'password', 'user')
+        fields = ('username', 'password')

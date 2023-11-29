@@ -24,7 +24,7 @@ from django.conf.urls.static import static
 urlpatterns = [
     # path('api/events', include('events.urls')),
     # path('api/docs', include('docs.urls')),
-    path('api/users', include('users.urls')),
+    path('api/users/', include('users.urls')),
 ]
 
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
