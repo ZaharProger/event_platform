@@ -33,11 +33,13 @@ class EventsView(APIView):
         event_form = EventForm(request.POST)
 
         if event_form.is_valid():
-            event_form.cleaned_data['organizer'] = found_passport[0].user \
-                if len(found_passport) != 0 else None
-            event_form.save()
+            with atomic:
+                added_event = event_form.save()
+                added_event.organizer = found_passport[0].user if len(found_passport) != 0 else None
+                added_event.save()
             response_status = status.HTTP_200_OK
         else:
+            print(event_form.errors)
             response_status = status.HTTP_400_BAD_REQUEST
 
         return Response(
