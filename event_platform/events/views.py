@@ -33,7 +33,7 @@ class EventsView(APIView):
         event_form = EventForm(request.POST)
 
         if event_form.is_valid():
-            with atomic:
+            with atomic():
                 added_event = event_form.save()
                 added_event.organizer = found_passport[0].user if len(found_passport) != 0 else None
                 added_event.save()
