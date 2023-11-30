@@ -2,9 +2,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.authentication import SessionAuthentication, BasicAuthentication
 from django.db.transaction import atomic
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import login, logout
 from rest_framework import status
-from django.contrib.auth.models import AnonymousUser
 from rest_framework.permissions import IsAuthenticated
 
 from .models import UserProfile, UserPassport
@@ -58,12 +57,9 @@ class AccountDataView(APIView):
         # new_user.set_password('')
         # new_user.save()
         
-        if type(request.user) != AnonymousUser:
-            found_passport = UserPassport.objects.filter(username=request.user.username)
-            data = UserPassportSerializer(found_passport[0]).data \
-                if len(found_passport) != 0 else None
-        else:
-            data = None
+        found_passport = UserPassport.objects.filter(username=request.user.username)
+        data = UserPassportSerializer(found_passport[0]).data \
+            if len(found_passport) != 0 else None
 
         return Response(
             {'data': data},
@@ -72,18 +68,15 @@ class AccountDataView(APIView):
         )
 
     def put(self, request):
-        if type(request.user) != AnonymousUser:
-            found_passport = UserPassport.objects.filter(username=request.user.username)
-            if len(found_passport) != 0:
-                user_profile_serializer = UserProfileSerializer(found_passport[0].user, data=request.data)
-                if user_profile_serializer.is_valid():
-                    user_profile_serializer.save()
-                    response_status = status.HTTP_200_OK
-                else:
-                    response_status = status.HTTP_400_BAD_REQUEST
-                
-        else:
-            response_status = status.HTTP_401_UNAUTHORIZED
+        found_passport = UserPassport.objects.filter(username=request.user.username)
+
+        if len(found_passport) != 0:
+            user_profile_serializer = UserProfileSerializer(found_passport[0].user, data=request.data)
+            if user_profile_serializer.is_valid():
+                user_profile_serializer.save()
+                response_status = status.HTTP_200_OK
+            else:
+                response_status = status.HTTP_400_BAD_REQUEST
 
         return Response(
             {'data': ''},
