@@ -39,7 +39,6 @@ class EventsView(APIView):
                 added_event.save()
             response_status = status.HTTP_200_OK
         else:
-            print(event_form.errors)
             response_status = status.HTTP_400_BAD_REQUEST
 
         return Response(
