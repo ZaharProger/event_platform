@@ -20,15 +20,26 @@ class Event(models.Model):
     datetime_start = models.BigIntegerField(default=0)
     datetime_end = models.BigIntegerField(blank=True, null=True)
     description = models.CharField(max_length=300, blank=True, null=True)
-    organizer = models.ForeignKey(
-        to=UserProfile, 
-        on_delete=models.CASCADE,
+    is_complete = models.BooleanField(default=False)
+    secret_code = models.CharField(max_length=8, default='00000000')
+    users = models.ManyToManyField(UserProfile, through='EventUser')
+    docs = models.ManyToManyField(Doc, through='EventDoc')
+
+
+class EventUser(models.Model):
+    event = models.ForeignKey(
+        to=Event, 
+        on_delete=models.CASCADE, 
         null=True, 
         blank=True
     )
-    is_complete = models.BooleanField(default=False)
-    secret_code = models.CharField(max_length=8, blank=True, null=True)
-    docs = models.ManyToManyField(Doc, through='EventDoc')
+    user = models.ForeignKey(
+        to=UserProfile, 
+        on_delete=models.CASCADE, 
+        null=True, 
+        blank=True
+    )
+    is_organizer = models.BooleanField(default=False)
 
 
 class EventDoc(models.Model):
