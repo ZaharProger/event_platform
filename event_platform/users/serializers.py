@@ -9,6 +9,12 @@ class UserProfileSerializer(ModelSerializer):
         fields = ('id', 'email', 'phone', 'telegram', 'organization', 'name')
 
 
+class UserProfileReadOnlySerializer(ModelSerializer):
+    class Meta:
+        model = UserProfile
+        fields = ('id', )
+
+
 class UserPassportSerializer(ModelSerializer):
     user = UserProfileSerializer()
     class Meta:

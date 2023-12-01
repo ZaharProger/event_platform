@@ -8,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from .models import Event, EventUser
 from .forms import EventForm
 from users.models import UserPassport
-from .serializers import EventShortCardSerializer
+from .serializers import EventInfoSerializer
 
 from string import ascii_uppercase, digits
 from random import choice
@@ -22,7 +22,7 @@ class EventsView(APIView):
         found_passport = UserPassport.objects.filter(username=request.user.username)
         events = [event for event in Event.objects.all() if event.users.contains(found_passport[0].user)]
         
-        event_serializer = EventShortCardSerializer(events, many=True)
+        event_serializer = EventInfoSerializer(events, many=True)
 
         return Response(
             {'data': event_serializer.data},
