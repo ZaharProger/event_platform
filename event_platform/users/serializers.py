@@ -12,7 +12,7 @@ class UserProfileSerializer(ModelSerializer):
 class UserProfileReadOnlySerializer(ModelSerializer):
     class Meta:
         model = UserProfile
-        fields = ('id', )
+        fields = ('id', 'name')
 
 
 class UserPassportSerializer(ModelSerializer):

@@ -8,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from .models import Event, EventUser
 from .forms import EventForm
 from users.models import UserPassport
-from .serializers import EventInfoSerializer
+from .serializers import EventInfoSerializer, EventCardSerializer, EventNotNestedSerializer
 
 from string import ascii_uppercase, digits
 from random import choice
@@ -20,9 +20,20 @@ class EventsView(APIView):
 
     def get(self, request):
         found_passport = UserPassport.objects.filter(username=request.user.username)
-        events = [event for event in Event.objects.all() if event.users.contains(found_passport[0].user)]
         
-        event_serializer = EventInfoSerializer(events, many=True)
+        url_id = request.GET.get('id', None)
+        if url_id is not None:
+            events = Event.objects.filter(pk=url_id)
+            event_serializer = EventCardSerializer(
+                [event for event in events if event.users.contains(found_passport[0].user)],
+                many=True
+            )
+        else:
+            events = Event.objects.all()
+            event_serializer = EventInfoSerializer(
+                [event for event in events if event.users.contains(found_passport[0].user)], 
+                many=True
+            )
 
         return Response(
             {'data': event_serializer.data},
@@ -50,13 +61,32 @@ class EventsView(APIView):
                 event_user.save()
             response_status = status.HTTP_200_OK
         else:
+            added_event = None
             response_status = status.HTTP_400_BAD_REQUEST
 
         return Response(
-            {'message': ''},
+            {'data': {'id': added_event.id if added_event is not None else None}},
             status=response_status,
             content_type='application/json'
         )
+
+    def put(self, request):
+        found_passport = UserPassport.objects.filter(username=request.user.username)
+        found_event = Event.objects.filter(pk=request.data['id'])
+
+        if len(found_passport) != 0 and len(found_event) != 0:
+            event_serializer = EventNotNestedSerializer(found_event[0], data=request.data)
+            if event_serializer.is_valid():
+                event_serializer.save()
+                response_status = status.HTTP_200_OK
+            else:
+                response_status = status.HTTP_400_BAD_REQUEST
+
+        return Response(
+            {'data': ''},
+            status=response_status,
+            content_type='application/json'
+        ) 
 
 
 class JoinEventView(APIView):
