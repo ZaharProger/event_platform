@@ -53,7 +53,7 @@ class AccountDataView(APIView):
     def get(self, request):
         # new_user = UserPassport()
         # new_user.username = ''
-        # new_user.user = UserProfile.objects.all()[1]
+        # new_user.user = UserProfile.objects.all()[2]
         # new_user.set_password('')
         # new_user.save()
         

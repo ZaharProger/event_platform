@@ -32,7 +32,7 @@ class EventsView(APIView):
                 else status.HTTP_404_NOT_FOUND
 
         else:
-            events = Event.objects.all()
+            events = Event.objects.all().order_by('-pk')
             event_serializer = EventInfoSerializer(
                 [event for event in events if event.users.contains(found_passport[0].user)], 
                 many=True
