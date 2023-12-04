@@ -1,3 +1,7 @@
 event_platform/.env
 venv
 __pycache__
+*.xlsx
+*.docx
+*.doc
+*.xls

@@ -5,13 +5,15 @@ from django.db.transaction import atomic
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 
-from .models import Event, EventUser
+from .models import Event, EventUser, EventDoc, Task, UserTask
 from .forms import EventForm
 from users.models import UserPassport
+from docs.models import DocField, Doc
 from .serializers import EventInfoSerializer, EventCardSerializer, EventNotNestedSerializer
 
 from string import ascii_uppercase, digits
 from random import choice
+import os
 
 
 class EventsView(APIView):
@@ -63,6 +65,30 @@ class EventsView(APIView):
                     is_organizer=True
                 )
                 event_user.save()
+
+                docs_path = os.path.join('event_platform', 'static', found_passport[0].doc_template)
+                docs = [Doc.objects.create(
+                    template_url=url,
+                    doc_type=list(filter(
+                        lambda choice: choice[0] == url.split('.')[0], 
+                        Doc.DocTypes.choices))[0][0]
+                ) for url in os.listdir(docs_path)]
+                for doc in docs:
+                    doc.save()
+                    event_doc = EventDoc.objects.create(
+                        event=added_event,
+                        doc=doc,
+                        name=f'{doc.doc_type} {doc.pk}'
+                    )
+                    event_doc.save()
+
+                    if doc.doc_type == Doc.DocTypes.ROADMAP:
+                        doc_field = DocField.objects.create(
+                            doc=doc,
+                            name='Задача'
+                        )
+                        doc_field.save()
+
             response_status = status.HTTP_200_OK
         else:
             added_event = None

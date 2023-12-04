@@ -37,3 +37,4 @@ class UserPassport(User):
         blank=True,
         null=True
     )
+    doc_template = models.CharField(default='', max_length=150)
