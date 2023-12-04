@@ -28,16 +28,20 @@ class EventsView(APIView):
                 [event for event in events if event.users.contains(found_passport[0].user)],
                 many=True
             )
+            response_status = status.HTTP_200_OK if len(event_serializer.data) != 0 \
+                else status.HTTP_404_NOT_FOUND
+
         else:
             events = Event.objects.all()
             event_serializer = EventInfoSerializer(
                 [event for event in events if event.users.contains(found_passport[0].user)], 
                 many=True
             )
+            response_status = status.HTTP_200_OK
 
         return Response(
             {'data': event_serializer.data},
-            status=status.HTTP_200_OK,
+            status=response_status,
             content_type='application/json'
         )
 
