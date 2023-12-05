@@ -19,7 +19,7 @@ class DocsView(APIView):
 
         if len(found_passport) != 0 and doc_to_delete is not None:
             found_doc = Doc.objects.filter(pk=doc_to_delete)
-            if len(found_doc) != 0 and found_doc[0].users.contains(found_passport[0].user):
+            if len(found_doc) != 0 and found_doc[0].event.users.contains(found_passport[0].user):
                 for field in DocField.objects.filter(doc=found_doc[0]):
                     field.delete()
                 found_doc[0].delete()
