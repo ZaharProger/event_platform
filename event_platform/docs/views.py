@@ -13,16 +13,8 @@ class DocsView(APIView):
     authentication_classes = [SessionAuthentication, BasicAuthentication]
     permission_classes = [IsAuthenticated]
 
-    def delete(self, request):
-        found_passport = UserPassport.objects.filter(username=request.user.username)
-        doc_to_delete = request.GET.get('id', None)
-
-        if len(found_passport) != 0 and doc_to_delete is not None:
-            found_doc = Doc.objects.filter(pk=doc_to_delete)
-            if len(found_doc) != 0 and found_doc[0].event.users.contains(found_passport[0].user):
-                for field in DocField.objects.filter(doc=found_doc[0]):
-                    field.delete()
-                found_doc[0].delete()
+    def put(self, request):
+        
 
         return Response(
             {'message': ''},
