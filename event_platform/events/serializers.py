@@ -1,7 +1,8 @@
 from rest_framework.serializers import ModelSerializer
 
-from .models import Event, EventUser, EventDoc
-from docs.serializers import DocSerializer
+from .models import Event, EventUser
+from docs.models import Doc, DocField, UserTask, Task
+from docs.serializers import DocSerializer, DocReadOnlySerializer
 from users.serializers import UserProfileReadOnlySerializer, UserProfileSerializer
 
 
@@ -19,19 +20,13 @@ class EventUserSerializer(ModelSerializer):
         fields = ('is_organizer', 'user')
 
 
-class EventDocSerializer(ModelSerializer):
-    doc = DocSerializer()
-    class Meta:
-        model = EventDoc
-        fields = ('name', 'doc')
-
-
 class EventInfoSerializer(ModelSerializer):
     users = EventUserReadOnlySerializer(many=True, source='eventuser_set')
+    docs = DocReadOnlySerializer(many=True)
     class Meta:
         model = Event
         fields = (
-            'id', 'name', 'place', 'users', 'event_type', 'is_online',
+            'id', 'name', 'place', 'users', 'event_type', 'is_online', 'docs',
             'datetime_start', 'datetime_end', 'is_complete', 'description'
         )
 
@@ -47,7 +42,7 @@ class EventNotNestedSerializer(ModelSerializer):
 
 class EventCardSerializer(ModelSerializer):
     users = EventUserSerializer(many=True, source='eventuser_set')
-    docs = EventDocSerializer(many=True, source='eventdoc_set')
+    docs = DocSerializer(many=True)
     class Meta:
         model = Event
         fields = (

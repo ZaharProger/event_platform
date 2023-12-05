@@ -5,10 +5,10 @@ from django.db.transaction import atomic
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 
-from .models import Event, EventUser, EventDoc, Task, UserTask
+from .models import Event, EventUser
 from .forms import EventForm
 from users.models import UserPassport
-from docs.models import DocField, Doc
+from docs.models import DocField, Doc, Task, UserTask
 from .serializers import EventInfoSerializer, EventCardSerializer, EventNotNestedSerializer
 
 from string import ascii_uppercase, digits
@@ -22,7 +22,6 @@ class EventsView(APIView):
 
     def get(self, request):
         found_passport = UserPassport.objects.filter(username=request.user.username)
-        
         url_id = request.GET.get('id', None)
         if url_id is not None:
             events = Event.objects.filter(pk=url_id)
@@ -75,19 +74,9 @@ class EventsView(APIView):
                 ) for url in os.listdir(docs_path)]
                 for doc in docs:
                     doc.save()
-                    event_doc = EventDoc.objects.create(
-                        event=added_event,
-                        doc=doc,
-                        name=f'{doc.doc_type} {doc.pk}'
-                    )
-                    event_doc.save()
-
-                    if doc.doc_type == Doc.DocTypes.ROADMAP:
-                        doc_field = DocField.objects.create(
-                            doc=doc,
-                            name='Задача'
-                        )
-                        doc_field.save()
+                    doc.name = f'{doc.doc_type} {doc.pk}'
+                    doc.save()
+                    added_event.docs.add(doc)
 
             response_status = status.HTTP_200_OK
         else:
@@ -113,13 +102,34 @@ class EventsView(APIView):
                 response_status = status.HTTP_400_BAD_REQUEST
 
         return Response(
-            {'data': ''},
+            {'message': ''},
             status=response_status,
             content_type='application/json'
         ) 
 
+    def delete(self, request):
+        found_passport = UserPassport.objects.filter(username=request.user.username)
+        event_to_delete = request.GET.get('id', None)
+
+        if len(found_passport) != 0 and event_to_delete is not None:
+            found_event = Event.objects.filter(pk=event_to_delete)
+            if len(found_event) != 0 and found_event[0].users.contains(found_passport[0].user):
+                for doc in Doc.objects.filter(event=found_event[0]):
+                    for field in DocField.objects.filter(doc=doc):
+                        field.delete()
+                    doc.delete()
+                found_event[0].delete()
+
+        return Response(
+            {'message': ''},
+            status=status.HTTP_200_OK,
+            content_type='application/json'
+        )   
 
 class JoinEventView(APIView):
+    authentication_classes = [SessionAuthentication, BasicAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
         found_passport = UserPassport.objects.filter(username=request.user.username)
         found_event = Event.objects.filter(secret_code=request.GET.get('secret_code', '0'))
@@ -141,3 +151,24 @@ class JoinEventView(APIView):
             status=response_status,
             content_type='application/json'
         )
+
+
+class CompleteEventView(APIView):
+    authentication_classes = [SessionAuthentication, BasicAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        found_passport = UserPassport.objects.filter(username=request.user.username)
+        event_to_complete = request.GET.get('id', None)
+
+        if len(found_passport) != 0 and event_to_complete is not None:
+            found_event = Event.objects.filter(pk=event_to_complete)
+            if len(found_event) != 0 and found_event[0].users.contains(found_passport[0].user):
+                found_event[0].is_complete = True
+                found_event[0].save()
+
+        return Response(
+            {'message': ''},
+            status=status.HTTP_200_OK,
+            content_type='application/json'
+        )  
