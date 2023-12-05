@@ -8,7 +8,7 @@ class Event(models.Model):
         INDIVIDUAL = 'С индивидуальным участием'
         TEAM = 'Командное участие'
 
-    name = models.CharField(default='', max_length=50)
+    name = models.CharField(default='', max_length=150)
     event_type = models.CharField(
         default=EventTypes.INDIVIDUAL, 
         max_length=100, 

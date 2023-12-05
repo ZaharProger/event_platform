@@ -19,7 +19,7 @@ class Doc(models.Model):
         max_length=50,
         choices=DocTypes.choices
     )
-    name = models.CharField(default='', max_length=50)
+    name = models.CharField(default='', max_length=150)
     event = models.ForeignKey(
         to=Event, 
         on_delete=models.CASCADE, 
@@ -37,7 +37,7 @@ class DocField(models.Model):
         blank=True, 
         related_name='fields'
     )
-    name = models.CharField(default='', max_length=50)
+    name = models.CharField(default='', max_length=150)
 
 
 class FieldValue(models.Model):
