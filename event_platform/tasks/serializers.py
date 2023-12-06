@@ -15,3 +15,9 @@ class TaskSerializer(ModelSerializer):
     class Meta:
         model = Task
         fields = ('id', 'datetime_start', 'datetime_end', 'state', 'parent', 'name', 'users')
+
+
+class TaskNonNestedSerializer(ModelSerializer):
+    class Meta:
+        model = Task
+        fields = ('id', 'datetime_start', 'datetime_end', 'state', 'parent', 'name')
