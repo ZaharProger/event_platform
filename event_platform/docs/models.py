@@ -62,13 +62,7 @@ class Task(models.Model):
         on_delete=models.CASCADE, 
         null=True, 
         blank=True, 
-        related_name='events'
-    )
-    field = models.OneToOneField(
-        to=DocField, 
-        on_delete=models.CASCADE,
-        blank=True,
-        null=True
+        related_name='tasks'
     )
     parent = models.ForeignKey(
         to='self', 
@@ -84,6 +78,7 @@ class Task(models.Model):
         choices=TaskStates.choices
     )
     users = models.ManyToManyField(UserProfile, through='UserTask')
+    name = models.CharField(default='', max_length=150)
 
 
 class UserTask(models.Model):

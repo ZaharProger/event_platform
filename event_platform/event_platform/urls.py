@@ -25,6 +25,7 @@ urlpatterns = [
     path('api/events/', include('events.urls')),
     path('api/docs/', include('docs.urls')),
     path('api/users/', include('users.urls')),
+    path('api/settings/', include('settings.urls')),
 ]
 
 urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

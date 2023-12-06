@@ -45,7 +45,8 @@ INSTALLED_APPS = [
     'events',
     'docs',
     'users',
-    'corsheaders'
+    'corsheaders',
+    'settings'
 ]
 
 MIDDLEWARE = [

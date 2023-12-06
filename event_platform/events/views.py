@@ -22,16 +22,16 @@ class EventsView(APIView):
 
     def get(self, request):
         found_passport = UserPassport.objects.filter(username=request.user.username)
-        url_id = request.GET.get('id', None)
-        if url_id is not None:
-            events = Event.objects.filter(pk=url_id)
+        event_id = request.GET.get('id', None)
+
+        if event_id is not None:
+            events = Event.objects.filter(pk=event_id)
             event_serializer = EventCardSerializer(
                 [event for event in events if event.users.contains(found_passport[0].user)],
                 many=True
             )
             response_status = status.HTTP_200_OK if len(event_serializer.data) != 0 \
                 else status.HTTP_404_NOT_FOUND
-
         else:
             events = Event.objects.all().order_by('-pk')
             event_serializer = EventInfoSerializer(
