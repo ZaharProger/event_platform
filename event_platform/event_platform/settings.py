@@ -46,7 +46,8 @@ INSTALLED_APPS = [
     'docs',
     'users',
     'corsheaders',
-    'settings'
+    'settings',
+    'tasks'
 ]
 
 MIDDLEWARE = [

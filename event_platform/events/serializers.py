@@ -1,7 +1,7 @@
 from rest_framework.serializers import ModelSerializer
 
 from .models import Event, EventUser
-from docs.models import UserTask, Task
+from tasks.serializers import UserTaskSerializer
 from docs.serializers import DocSerializer, DocReadOnlySerializer
 from users.serializers import UserProfileReadOnlySerializer, UserProfileSerializer
 
@@ -18,20 +18,6 @@ class EventUserSerializer(ModelSerializer):
     class Meta:
         model = EventUser
         fields = ('is_organizer', 'user')
-
-
-class TaskSerializer(ModelSerializer):
-    class Meta:
-        model = Task
-        fields = ('id', 'datetime_start', 'datetime_end', 'state', 'parent', 'name')
-
-
-class UserTaskSerializer(ModelSerializer):
-    user = UserProfileSerializer()
-    task = TaskSerializer()
-    class Meta:
-        model = UserTask
-        fields = ('task', 'user', 'is_responsible')
 
 
 class EventInfoSerializer(ModelSerializer):

@@ -4,7 +4,8 @@ from rest_framework.authentication import SessionAuthentication, BasicAuthentica
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 
-from docs.models import Doc, Task
+from docs.models import Doc
+from tasks.models import Task
 from events.models import Event
 
 

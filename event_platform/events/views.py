@@ -8,7 +8,8 @@ from rest_framework.permissions import IsAuthenticated
 from .models import Event, EventUser
 from .forms import EventForm
 from users.models import UserPassport
-from docs.models import DocField, Doc, Task, UserTask
+from docs.models import DocField, Doc
+from tasks.models import Task, UserTask
 from .serializers import EventInfoSerializer, EventCardSerializer, EventNotNestedSerializer
 
 from string import ascii_uppercase, digits
