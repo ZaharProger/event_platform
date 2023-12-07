@@ -28,6 +28,11 @@ class TasksView(APIView):
                 found_doc[0].name = request.data['name']
                 found_doc[0].save()
 
+                request_tasks = [task['id'] for task in request.data['tasks']]
+                for task in Task.objects.all():
+                    if task.pk not in request_tasks:
+                        task.delete()
+
                 for task in request.data['tasks']:
                     found_task = [] if type(task['id']) == str else Task.objects.filter(pk=task['id'])
                     if len(found_task) != 0:
@@ -59,8 +64,6 @@ class TasksView(APIView):
 
                         added_task.event = found_event[0]
                         added_task.save()
-                    else:
-                        print(task_data.errors)
 
         return Response(
             {'message': ''},
