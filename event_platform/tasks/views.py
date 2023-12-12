@@ -53,9 +53,13 @@ class TasksView(APIView):
                                 if len(found_relation) == 0:
                                     user_task = UserTask.objects.create(
                                         user=found_user[0],
-                                        task=added_task
+                                        task=added_task,
+                                        is_responsible=user['is_responsible']
                                     )
                                     user_task.save()
+                                else:
+                                    found_relation[0].is_responsible = user['is_responsible']
+                                    found_relation[0].save()
 
                         task_users = [user['user']['id'] for user in task['users']]
                         for user_task in UserTask.objects.filter(task=added_task):
