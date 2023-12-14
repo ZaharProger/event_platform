@@ -7,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 import openpyxl
 from openpyxl.styles import Font, Alignment, Color, PatternFill, Border
 import os
+from datetime import datetime
 
 from django.http import HttpResponse
 
@@ -48,14 +49,17 @@ class DocsView(APIView):
                     Task.TaskStates.ACTIVE: 'ffa726',
                     Task.TaskStates.COMPLETED: '4caf50'
                 }
+                format_template = '%d.%m.%Y %H:%M'
 
                 tasks = Task.objects.filter(event=found_doc[0].event)
                 for i in range(len(tasks)):
                     row_number = i + 4
 
-                    task_dates = f'{tasks[i].datetime_start}'
+                    datetime_start = tasks[i].datetime_start
+                    datetime_end = tasks[i].datetime_end
+                    task_dates = f'{datetime.fromtimestamp(datetime_start).strftime(format_template)}'
                     if tasks[i].datetime_end is not None:
-                        task_dates += f' - {tasks[i].datetime_end}'
+                        task_dates += f' - {datetime.fromtimestamp(datetime_end).strftime(format_template)}'
                     
                     responsible_user = UserTask.objects.filter(task=tasks[i], is_responsible=True)
                     responsible_user = '' if len(responsible_user) == 0 \
