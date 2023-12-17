@@ -1,0 +1,17 @@
+asgiref     
+Django    
+django-cors-headers      
+django-filter
+djangorestframework
+et-xmlfile
+Markdown
+openpyxl     
+pip      
+psycopg      
+psycopg-binary     
+python-dotenv       
+pytz
+setuptools      
+sqlparse      
+typing_extensions
+tzdata
