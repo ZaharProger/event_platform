@@ -20,7 +20,8 @@ class Task(models.Model):
         to='self', 
         on_delete=models.CASCADE,
         blank=True,
-        null=True
+        null=True,
+        related_name='nested_tasks'
     )
     datetime_start = models.BigIntegerField(default=0)
     datetime_end = models.BigIntegerField(blank=True, null=True)
