@@ -10,21 +10,20 @@ class UserTaskSerializer(ModelSerializer):
         fields = ('user', 'is_responsible')
 
 
-class NestedTasksSerializer(ModelSerializer):
-    users = UserTaskSerializer(many=True, source='usertask_set')
+class NestedTaskSerializer(ModelSerializer):
     class Meta:
         model = Task
-        fields = ('id', 'datetime_start', 'datetime_end', 'state', 'name', 'users')
+        fields = ('id',)
 
 
 class TaskSerializer(ModelSerializer):
     users = UserTaskSerializer(many=True, source='usertask_set')
     class Meta:
         model = Task
-        fields = ('id', 'datetime_start', 'datetime_end', 'state', 'nested_tasks', 'name', 'users')
+        fields = ('id', 'datetime_start', 'datetime_end', 'state', 'parent', 'name', 'users')
     
     def get_related_field(self, model_field):
-        return NestedTasksSerializer()
+        return NestedTaskSerializer()
 
 
 class TaskNonNestedSerializer(ModelSerializer):
