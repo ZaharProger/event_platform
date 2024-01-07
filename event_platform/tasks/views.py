@@ -34,7 +34,9 @@ class TasksView(APIView):
                         task.delete()
 
                 for task in request.data['tasks']:
-                    found_task = [] if type(task['id']) == str else Task.objects.filter(pk=task['id'])
+                    found_task = [] if type(task['id']) == str \
+                        else Task.objects.filter(pk=task['id'])
+                    
                     if len(found_task) != 0:
                         task_data = TaskNonNestedSerializer(found_task[0], data=task)
                     else:
@@ -42,6 +44,21 @@ class TasksView(APIView):
                     
                     if task_data.is_valid():
                         added_task = task_data.save()
+
+                        if len(found_task) != 0:
+                            parent_task_id = found_task[0].parent.id \
+                                if found_task[0].parent is not None else -1
+                        else:
+                            parent_task_id = task['parent'] \
+                                if task['parent'] is not None else -1
+                    
+                        parent_task = None
+                        for db_task in Task.objects.filter(event=found_event[0].id):
+                            if db_task.id == parent_task_id:
+                                parent_task = db_task
+                                break
+                        
+                        added_task.parent = parent_task
 
                         for user in task['users']:                         
                             found_user = UserProfile.objects.filter(pk=user['user']['id'])

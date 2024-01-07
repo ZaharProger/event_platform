@@ -13,7 +13,7 @@ class UserTaskSerializer(ModelSerializer):
 class NestedTaskSerializer(ModelSerializer):
     class Meta:
         model = Task
-        fields = ('id',)
+        fields = ('id', 'name')
 
 
 class TaskSerializer(ModelSerializer):
