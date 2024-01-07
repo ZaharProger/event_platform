@@ -51,7 +51,7 @@ class DocsView(APIView):
                 }
                 format_template = '%d.%m.%Y %H:%M'
 
-                tasks = Task.objects.filter(event=found_doc[0].event)
+                tasks = Task.objects.filter(event=found_doc[0].event).order_by('datetime_start')
                 for i in range(len(tasks)):
                     row_number = i + 4
 
