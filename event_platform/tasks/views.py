@@ -29,7 +29,7 @@ class TasksView(APIView):
                 found_doc[0].save()
 
                 request_tasks = [task['id'] for task in request.data['tasks']]
-                for task in Task.objects.all():
+                for task in Task.objects.filter(event=found_event[0].id):
                     if task.pk not in request_tasks:
                         task.delete()
 
