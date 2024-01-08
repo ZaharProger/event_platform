@@ -32,6 +32,9 @@ class TasksView(APIView):
                 for task in Task.objects.filter(event=found_event[0].id):
                     if task.pk not in request_tasks:
                         task.delete()
+                
+                created_tasks_ids = {task['id']: -1 for task in request.data['tasks'] \
+                                    if type(task['id']) == str}
 
                 for task in request.data['tasks']:
                     found_task = [] if type(task['id']) == str \
@@ -43,14 +46,19 @@ class TasksView(APIView):
                         task_data = TaskForm(task)
                     
                     if task_data.is_valid():
-                        added_task = task_data.save()
+                        added_task = task_data.save()                       
 
                         if len(found_task) != 0:
                             parent_task_id = found_task[0].parent.id \
                                 if found_task[0].parent is not None else -1
                         else:
-                            parent_task_id = task['parent'] \
-                                if task['parent'] is not None else -1
+                            created_tasks_ids[task['id']] = added_task.pk
+                            if task['parent'] in created_tasks_ids.keys():
+                                parent_task_id = created_tasks_ids[task['parent']] \
+                                    if task['parent'] is not None else -1 
+                            else:
+                                parent_task_id = task['parent'] \
+                                    if task['parent'] is not None else - 1                      
                     
                         parent_task = None
                         for db_task in Task.objects.filter(event=found_event[0].id):
