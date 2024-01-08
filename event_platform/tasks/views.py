@@ -36,7 +36,11 @@ class TasksView(APIView):
                 created_tasks_ids = {task['id']: -1 for task in request.data['tasks'] \
                                     if type(task['id']) == str}
 
-                for task in request.data['tasks']:
+                sorted_tasks = sorted(
+                    request.data['tasks'], 
+                    key=lambda item: -1 if item['parent'] is None else 1
+                )
+                for task in sorted_tasks:
                     found_task = [] if type(task['id']) == str \
                         else Task.objects.filter(pk=task['id'])
                     
