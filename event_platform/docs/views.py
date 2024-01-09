@@ -35,13 +35,20 @@ class DocsView(APIView):
         data = None
 
         if len(found_passport) != 0 and len(found_doc) != 0:
-            docs_path = os.path.join('event_platform', 'static', found_passport[0].doc_template)
-            file = [url for url in os.listdir(docs_path) if found_doc[0].doc_type == url.split('.')[0]]
+            docs_path = os.path.join(
+                'event_platform', 
+                'static', 
+                found_passport[0].doc_template
+            )
+            file = [url for url in os.listdir(docs_path) 
+                    if found_doc[0].doc_type == url.split('.')[0]]
+            
             if len(file) != 0:
                 workbook = openpyxl.load_workbook(os.path.join(docs_path, file[0]))
                 doc_sheet = workbook.active
 
                 doc_sheet.cell(row=1, column=2).value = found_doc[0].name
+                doc_sheet.cell(row=1, column=2).font = Font(size=18.0, color='ffffff')
                 center_alignment = Alignment(horizontal='center', vertical='center')
 
                 state_colors = {
@@ -51,35 +58,96 @@ class DocsView(APIView):
                 }
                 format_template = '%d.%m.%Y %H:%M'
 
-                tasks = Task.objects.filter(event=found_doc[0].event).order_by('datetime_start')
-                for i in range(len(tasks)):
-                    row_number = i + 4
+                prepared_tasks = []
+                parent_tasks = Task.objects \
+                    .filter(event=found_doc[0].event, parent=None) \
+                    .order_by('datetime_start')
+                
+                for parent_task in parent_tasks:
+                    nested_tasks = Task.objects \
+                        .filter(parent=parent_task.pk) \
+                        .order_by('datetime_start')
+                    
+                    tasks_group = [parent_task]
+                    tasks_group.extend(nested_tasks)
+                    prepared_tasks.append(tasks_group)
 
-                    datetime_start = tasks[i].datetime_start
-                    datetime_end = tasks[i].datetime_end
-                    task_dates = f'{datetime.fromtimestamp(datetime_start).strftime(format_template)}'
-                    if tasks[i].datetime_end is not None:
-                        task_dates += f' - {datetime.fromtimestamp(datetime_end).strftime(format_template)}'
-                    
-                    responsible_user = UserTask.objects.filter(task=tasks[i], is_responsible=True)
-                    responsible_user = '' if len(responsible_user) == 0 \
-                        else responsible_user[0].user.name
-                    
-                    task_users = ', '.join([task_user.name for task_user in tasks[i].users.all()])
-                    
-                    doc_sheet.cell(row=row_number, column=1).value = i + 1
-                    doc_sheet.cell(row=row_number, column=2).value = tasks[i].name
-                    doc_sheet.cell(row=row_number, column=3).value = task_dates
-                    doc_sheet.cell(row=row_number, column=3).alignment = center_alignment
-                    doc_sheet.cell(row=row_number, column=4).value = tasks[i].state
-                    doc_sheet.cell(row=row_number, column=4).fill = PatternFill(
-                        patternType='solid',
-                        start_color=Color(state_colors[tasks[i].state])
-                    )
-                    doc_sheet.cell(row=row_number, column=5).value = responsible_user
-                    doc_sheet.cell(row=row_number, column=6).value = task_users
+                doc_row = 3
+                for i in range(len(prepared_tasks)):
+                    for j in range(len(prepared_tasks[i])):
+                        doc_row += 1
 
-                export_path = os.path.join('event_platform', 'static', 'export', f'{found_doc[0].name}.xlsx')
+                        datetime_start = prepared_tasks[i][j].datetime_start
+                        datetime_end = prepared_tasks[i][j].datetime_end
+                        formatted_datetime_start = datetime \
+                            .fromtimestamp(datetime_start) \
+                            .strftime(format_template)
+                        task_dates = f'{formatted_datetime_start}'
+
+                        if prepared_tasks[i][j].datetime_end is not None:
+                            formatted_datetime_end = datetime \
+                                .fromtimestamp(datetime_end) \
+                                .strftime(format_template)
+                            task_dates += f' - {formatted_datetime_end}'
+                    
+                        responsible_user = UserTask.objects.filter(
+                            task=prepared_tasks[i][j], 
+                            is_responsible=True
+                        )
+                        responsible_user = '' if len(responsible_user) == 0 \
+                            else responsible_user[0].user.name
+                    
+                        task_users = ', '.join([task_user.name for task_user \
+                                                in prepared_tasks[i][j].users.all()])
+
+                        if j == 0:
+                            item_number = f'{i + 1}'
+                            cell_font = Font(bold=True, size=14.0)
+                            cell_color = PatternFill(
+                                patternType='solid',
+                                start_color=Color('aaaaaa')
+                            )
+                        else:
+                            item_number = f'{i + 1}.{j}'
+                            cell_font = Font(bold=True, size=12.0)
+                            cell_color = PatternFill(
+                                patternType='solid',
+                                start_color=Color('cccccc')
+                            )
+
+                        doc_sheet.cell(row=doc_row, column=1).value = item_number
+                        doc_sheet.cell(row=doc_row, column=1).font = cell_font
+                        doc_sheet.cell(row=doc_row, column=1).fill = cell_color
+
+                        doc_sheet.cell(row=doc_row, column=2).value = prepared_tasks[i][j].name
+                        doc_sheet.cell(row=doc_row, column=2).font = cell_font
+                        doc_sheet.cell(row=doc_row, column=2).fill = cell_color
+
+                        doc_sheet.cell(row=doc_row, column=3).value = task_dates
+                        doc_sheet.cell(row=doc_row, column=3).alignment = center_alignment
+                        doc_sheet.cell(row=doc_row, column=3).font = cell_font
+                        doc_sheet.cell(row=doc_row, column=3).fill = cell_color
+
+                        doc_sheet.cell(row=doc_row, column=4).value = prepared_tasks[i][j].state
+                        doc_sheet.cell(row=doc_row, column=4).font = cell_font
+                        doc_sheet.cell(row=doc_row, column=4).fill = PatternFill(
+                            patternType='solid',
+                            start_color=Color(state_colors[prepared_tasks[i][j].state])
+                        )
+                        doc_sheet.cell(row=doc_row, column=5).value = responsible_user
+                        doc_sheet.cell(row=doc_row, column=5).font = cell_font
+                        doc_sheet.cell(row=doc_row, column=5).fill = cell_color
+
+                        doc_sheet.cell(row=doc_row, column=6).value = task_users
+                        doc_sheet.cell(row=doc_row, column=6).font = cell_font
+                        doc_sheet.cell(row=doc_row, column=6).fill = cell_color
+
+                export_path = os.path.join(
+                    'event_platform', 
+                    'static', 
+                    'export', 
+                    f'{found_doc[0].name}.xlsx'
+                )
                 workbook.save(export_path)
                 workbook.close()
                 
