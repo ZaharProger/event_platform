@@ -13,7 +13,7 @@ class DocFieldSerializer(ModelSerializer):
     values = FieldValueSerializer(many=True)
     class Meta:
         model = DocField
-        fields = ('id', 'name', 'values')
+        fields = ('id', 'name', 'field_type', 'values')
 
 
 class DocSerializer(ModelSerializer):

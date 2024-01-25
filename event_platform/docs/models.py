@@ -30,6 +30,11 @@ class Doc(models.Model):
 
 
 class DocField(models.Model):
+
+    class FieldTypes(models.TextChoices):
+        TEXT = 'текст'
+        DATE = 'дата'
+
     doc = models.ForeignKey(
         to=Doc, 
         on_delete=models.CASCADE, 
@@ -38,6 +43,11 @@ class DocField(models.Model):
         related_name='fields'
     )
     name = models.CharField(default='', max_length=150)
+    field_type = models.CharField(
+        default=FieldTypes.TEXT,
+        max_length=20,
+        choices=FieldTypes.choices
+    )
 
 
 class FieldValue(models.Model):
