@@ -10,9 +10,13 @@ import os
 from datetime import datetime
 
 from django.http import HttpResponse
+from django.db.transaction import atomic
 
 from tasks.models import Task, UserTask
-from .models import DocField, Doc
+from .models import DocField, Doc, FieldValue
+from .forms import FieldValueForm
+from .serializers import FieldValueSerializer
+from events.models import Event
 from users.models import UserPassport
 
 
@@ -21,7 +25,42 @@ class DocsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def put(self, request):
-        
+        found_passport = UserPassport.objects.filter(username=request.user.username)
+        found_event = Event.objects.filter(pk=request.data['event_id'])
+        found_doc = Doc.objects.filter(pk=request.data['doc_id'])
+
+        if len(found_passport) != 0 and len(found_event) != 0 and len(found_doc) != 0:
+            with atomic():
+                found_doc[0].name = request.data['name']
+                found_doc[0].save()
+
+                request_pairs = []
+                for field in request.data['fields']:
+                    request_pairs.extend([(field['id'], value) for \
+                                            value in field['values']])
+                request_values = [pair[1]['id'] for pair in request_pairs \
+                                  if type(pair[1]['id']) != str]
+                for value in FieldValue.objects.filter(pk__in=request_values):
+                    if value.pk not in request_values:
+                        value.delete()
+                
+                for pair in request_pairs:
+                    found_value = [] if type(pair[1]['id']) == str \
+                        else FieldValue.objects.filter(pk=pair[1]['id'])
+                    
+                    if len(found_value) != 0:
+                        value_data = FieldValueSerializer(found_value[0], data=pair[1])
+                    else:
+                        value_data = FieldValueForm(pair[1])
+                    
+                    if value_data.is_valid():
+                        added_value = value_data.save()
+                        if len(found_value) == 0:
+                            found_field = [field for field in found_doc[0].fields.all() \
+                                           if field.pk == pair[0]]
+                            if len(found_field) != 0:
+                                added_value.field = found_field[0]
+                                added_value.save()
 
         return Response(
             {'message': ''},

@@ -82,34 +82,34 @@ class EventsView(APIView):
                             name=doc_type_value
                         )
                         docs.append(new_doc)
+                
+                with open(os.path.join(docs_path, 'config.txt')) as config:
+                    config_data = config.readlines()
+                    config_dict = {}
+                    last_key = ''
+
+                    for line in config_data:
+                        splitted_line = line.split(':')
+                        if len(splitted_line) != 0 and splitted_line[0] in Doc.DocTypes.values:
+                            config_dict[splitted_line[0]] = []
+                            last_key = splitted_line[0]
+                        else:
+                            config_dict[last_key].append(line.strip())
                     
                 for doc in docs:
                     doc.save()
-                    doc_type_fields = []
-
-                    with open(os.path.join(docs_path, 'config.txt')) as config:
-                        config_data = [line.strip() for line in config.readlines()]                       
-                        is_found = False
-        
-                        for line in config_data:                        
-                            if is_found:
-                                doc_type_fields.append(line)
-                            else:
-                                splitted_line = line.split(':')
-                                is_found = len(splitted_line) != 0 and \
-                                    splitted_line[0] == doc.doc_type
-
-                    for doc_type_field in doc_type_fields:
-                        splitted_field = doc_type_field.split('|')
-                        new_field = DocField.objects.create(
-                            doc=doc,
-                            name=splitted_field[0],
-                            field_type=splitted_field[1]
-                        )
-                        new_field.save()
+                    if doc.doc_type in config_dict.keys():
+                        for field in config_dict[doc.doc_type]:
+                            splitted_field = field.split('|')
+                            new_field = DocField.objects.create(
+                                doc=doc,
+                                name=splitted_field[0],
+                                field_type=splitted_field[1]
+                            )
+                            new_field.save()
 
                     added_event.docs.add(doc)
-                
+
                 added_event.save()
 
             response_status = status.HTTP_200_OK
