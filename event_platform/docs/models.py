@@ -32,8 +32,9 @@ class Doc(models.Model):
 class DocField(models.Model):
 
     class FieldTypes(models.TextChoices):
-        TEXT = 'текст'
-        DATE = 'дата'
+        TEXT = 'text'
+        DATE = 'date'
+        NUMBER = 'number'
 
     doc = models.ForeignKey(
         to=Doc, 
