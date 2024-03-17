@@ -100,13 +100,22 @@ class UserGroupsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        templates_path = os.path.join('event_platform', 'static')
-        odd_dir_list = ['export', '.DS_Store']
-        data = [{'name': dir} for dir in os.listdir(templates_path) if dir not in odd_dir_list]
+        group_name = request.GET.get('name', None)
+
+        if group_name is None:
+            templates_path = os.path.join('event_platform', 'static')
+            odd_dir_list = ['export', '.DS_Store']
+            data = [{'name': dir} for dir in os.listdir(templates_path) if dir not in odd_dir_list]
+            response_status = status.HTTP_200_OK if len(data) != 0 else status.HTTP_404_NOT_FOUND
+        else:
+            group_users = UserPassport.objects.filter(doc_template=group_name)
+            serialized_group_users = UserPassportSerializer(group_users, many=True).data
+            data = {'name': group_name, 'users': serialized_group_users, 'docs': []}
+            response_status = status.HTTP_200_OK
 
         return Response(
             {'data': data},
-            status=status.HTTP_200_OK,
+            status=response_status,
             content_type='application/json'
         ) 
 
