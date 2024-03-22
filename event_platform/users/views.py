@@ -2,14 +2,19 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.authentication import SessionAuthentication, BasicAuthentication
 from django.contrib.auth import login, logout
+from django.db.transaction import atomic
+from django.core.mail import send_mail
+from django.conf import settings
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 
-from .models import UserPassport
+from .models import UserPassport, UserProfile
 from .forms import UserPassportForm
 from .serializers import UserPassportSerializer, UserProfileSerializer
 
 import os
+from string import ascii_letters, digits
+from random import choice
 
 
 class LoginView(APIView):
@@ -55,18 +60,6 @@ class AccountDataView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        # user_profile = UserProfile.objects.create(
-        #     name='',
-        #     email=''
-        # )
-        # user_profile.save()
-        # new_user = UserPassport()
-        # new_user.is_superuser = True
-        # new_user.username = ''
-        # new_user.user = user_profile
-        # new_user.set_password('')
-        # new_user.save()
-        
         found_passport = UserPassport.objects.filter(username=request.user.username)
         data = UserPassportSerializer(found_passport[0]).data \
             if len(found_passport) != 0 else None
@@ -89,10 +82,65 @@ class AccountDataView(APIView):
                 response_status = status.HTTP_400_BAD_REQUEST
 
         return Response(
-            {'data': ''},
+            {'message': ''},
             status=response_status,
             content_type='application/json'
-        ) 
+        )
+    
+    def post(self, request):
+        found_passport = UserPassport.objects.filter(username=request.user.username)
+
+        if len(found_passport) != 0:
+            with atomic():
+                letters_digits = ascii_letters + digits
+
+                new_user_profile = UserProfile.objects.create(
+                    name=request.data['name'],
+                    email=request.data['email']
+                )
+                new_user_profile.save()
+
+                new_user = UserPassport()
+                new_user.is_superuser = False
+                new_user.is_staff = request.data['is_staff']
+                new_username = ''.join([choice(ascii_letters) for _ in range(10)])
+                new_password = ''.join([choice(letters_digits) for _ in range(10)])
+
+                new_user.username = new_username
+                new_user.user = new_user_profile
+                new_user.doc_template = request.data['group_name']
+                new_user.set_password(new_password)
+                new_user.save()
+
+                subject = 'Регистрация на EventPlatform'
+                message = ' '.join([
+                    f"Здравствуйте, {request.data['name']}!",
+                    'Вы были зарегистрированы на EventPlatform!',
+                    f'Ваши данные для входа: логин - {new_username}, пароль - {new_password}',
+                ])
+                from_email = settings.EMAIL_HOST_USER
+                recipient_list = [request.data['email']]
+                send_mail(subject, message, from_email, recipient_list)
+
+        return Response(
+            {'message': ''},
+            status=status.HTTP_200_OK,
+            content_type='application/json'
+        )
+
+    def delete(self, request):
+        found_passport = UserPassport.objects.filter(username=request.user.username)
+        user_to_delete = request.GET.get('id', None)
+
+        if len(found_passport) != 0 and user_to_delete is not None:
+            for user in UserProfile.objects.filter(pk=user_to_delete):
+                user.delete()
+
+        return Response(
+            {'message': ''},
+            status=status.HTTP_200_OK,
+            content_type='application/json'
+        )
     
 
 class UserGroupsView(APIView):
@@ -101,16 +149,44 @@ class UserGroupsView(APIView):
 
     def get(self, request):
         group_name = request.GET.get('name', None)
+        templates_path = os.path.join('event_platform', 'static')
 
         if group_name is None:
-            templates_path = os.path.join('event_platform', 'static')
             odd_dir_list = ['export', '.DS_Store']
             data = [{'name': dir} for dir in os.listdir(templates_path) if dir not in odd_dir_list]
             response_status = status.HTTP_200_OK if len(data) != 0 else status.HTTP_404_NOT_FOUND
         else:
             group_users = UserPassport.objects.filter(doc_template=group_name)
             serialized_group_users = UserPassportSerializer(group_users, many=True).data
-            data = {'name': group_name, 'users': serialized_group_users, 'docs': []}
+            group_docs = []
+            group_path = os.path.join(templates_path, group_name)
+            with open(os.path.join(group_path, 'config.txt'), 'r') as config:
+                config_lines = config.readlines()
+                doc_index = -1
+
+                for line in config_lines:
+                    if ':' in line:
+                        group_docs.append({'name': line.strip().split(':')[0], 'fields': []})
+                        doc_index += 1
+                    else:
+                        splitted_line = line.strip().split('|')
+                        group_docs[doc_index]['fields'].append({
+                            'name': splitted_line[0],
+                            'type': splitted_line[1]
+                        })
+            
+            doc_names = [group_doc['name'] for group_doc in group_docs]
+            for doc in os.listdir(group_path):
+                if doc not in ['.DS_Store', 'config.txt']:
+                    splitted_doc = doc.split('.') 
+                    if splitted_doc[0] not in doc_names:
+                        group_docs.append({'name': splitted_doc[0], 'fields': []})
+            
+            data = {
+                'name': group_name, 
+                'users': serialized_group_users, 
+                'docs': group_docs
+            }
             response_status = status.HTTP_200_OK
 
         return Response(
@@ -126,6 +202,8 @@ class UserGroupsView(APIView):
             found_passport[0].save()
             docs_path = os.path.join('event_platform', 'static', request.data['name'])
             os.mkdir(docs_path)
+            with open(os.path.join(docs_path, 'config.txt'), 'x'):
+                pass
 
         return Response(
             {'message': ''},
@@ -154,7 +232,10 @@ class UserGroupsView(APIView):
                 passport.doc_template = ''
                 passport.save()
 
-            os.rmdir(os.path.join('event_platform', 'static', group_to_delete))
+            group_path = os.path.join('event_platform', 'static', group_to_delete)
+            for group_file in os.listdir(group_path):
+                os.remove(os.path.join(group_path, group_file))
+            os.rmdir(group_path)
 
         return Response(
             {'message': ''},
