@@ -12,6 +12,8 @@ from .models import UserPassport, UserProfile
 from .forms import UserPassportForm
 from .serializers import UserPassportSerializer, UserProfileSerializer
 
+from events.models import Event, EventUser
+
 import os
 from string import ascii_letters, digits
 from random import choice
@@ -242,4 +244,37 @@ class UserGroupsView(APIView):
             status=status.HTTP_200_OK,
             content_type='application/json'
         )
-    
+
+
+class UsersView(APIView):
+    authentication_classes = [SessionAuthentication, BasicAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        event_id = request.GET.get('id', None)
+        if event_id is not None:
+            found_event = Event.objects.filter(pk=event_id)
+            if len(found_event) != 0:
+                data = UserPassportSerializer(
+                    UserPassport.objects.filter(is_superuser=False), 
+                    many=True
+                ).data
+
+                for i in range(len(data)):
+                    found_relation = EventUser.objects.filter(
+                        event=found_event[0],
+                        user=UserProfile.objects.filter(pk=data[i]['user']['id'])[0]
+                    )
+                    data[i]['is_event_member'] = len(found_relation) != 0
+                    data[i]['is_organizer'] = len(found_relation)!= 0 and \
+                        found_relation[0].is_organizer
+            else:
+                data = []
+        else:
+            data = []
+
+        return Response(
+            {'data': data},
+            status=status.HTTP_200_OK,
+            content_type='application/json'
+        ) 
