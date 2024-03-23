@@ -6,10 +6,9 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 
 from users.models import UserProfile, UserPassport
-from users.serializers import UserProfileSerializer
 from .models import Task, UserTask
 from events.models import Event
-from .serializers import TaskNonNestedSerializer, UserTaskSerializer
+from .serializers import TaskNonNestedSerializer
 from .forms import TaskForm
 from docs.models import Doc
 
@@ -23,7 +22,7 @@ class TasksView(APIView):
         found_event = Event.objects.filter(pk=request.data['event_id'])
         found_doc = Doc.objects.filter(pk=request.data['doc_id'])
 
-        if len(found_passport) != 0 and len(found_event) != 0 and len(found_doc) != 0:
+        if len(found_passport) != 0 and len(found_event) != 0 and len(found_doc) != 0 and found_passport[0].is_staff:
             with atomic():
                 found_doc[0].name = request.data['name']
                 found_doc[0].save()
@@ -97,9 +96,13 @@ class TasksView(APIView):
 
                         added_task.event = found_event[0]
                         added_task.save()
+            
+            response_status = status.HTTP_200_OK
+        else:
+            response_status = status.HTTP_403_FORBIDDEN
 
         return Response(
             {'message': ''},
-            status=status.HTTP_200_OK,
+            status=response_status,
             content_type='application/json'
         ) 

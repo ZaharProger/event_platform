@@ -32,7 +32,7 @@ class DocsView(APIView):
         found_event = Event.objects.filter(pk=request.data['event_id'])
         found_doc = Doc.objects.filter(pk=request.data['doc_id'])
 
-        if len(found_passport) != 0 and len(found_event) != 0 and len(found_doc) != 0:
+        if len(found_passport) != 0 and len(found_event) != 0 and len(found_doc) != 0 and found_passport[0].is_staff:
             with atomic():
                 found_doc[0].name = request.data['name']
                 found_doc[0].save()
@@ -43,9 +43,10 @@ class DocsView(APIView):
                                             value in field['values']])
                 request_values = [pair[1]['id'] for pair in request_pairs \
                                   if type(pair[1]['id']) != str]
-                for value in FieldValue.objects.filter(pk__in=request_values):
-                    if value.pk not in request_values:
-                        value.delete()
+                for field in found_doc[0].fields.all():
+                    for value in field.values.all():
+                        if value.pk not in request_values:
+                            value.delete()
                 
                 for pair in request_pairs:
                     found_value = [] if type(pair[1]['id']) == str \
@@ -64,10 +65,14 @@ class DocsView(APIView):
                             if len(found_field) != 0:
                                 added_value.field = found_field[0]
                                 added_value.save()
+            
+            response_status = status.HTTP_200_OK
+        else:
+            response_status = status.HTTP_403_FORBIDDEN
 
         return Response(
             {'message': ''},
-            status=status.HTTP_200_OK,
+            status=response_status,
             content_type='application/json'
         )
 
@@ -76,7 +81,7 @@ class DocsView(APIView):
         found_doc = Doc.objects.filter(pk=request.GET.get('id', -1))
         data = None
 
-        if len(found_passport) != 0 and len(found_doc) != 0:
+        if len(found_passport) != 0 and len(found_doc) != 0 and not found_passport[0].is_superuser:
             docs_path = os.path.join(
                 'event_platform', 
                 'static', 
@@ -104,10 +109,15 @@ class DocsView(APIView):
                 with open(os.path.join(export_path), 'rb') as created_file:
                     data = created_file.read()
                 os.remove(export_path)
+                response_status = status.HTTP_200_OK
+            else:
+                response_status = status.HTTP_404_NOT_FOUND
+        else:
+            response_status = status.HTTP_403_FORBIDDEN
 
         response = HttpResponse(
             data,
-            status=status.HTTP_200_OK if data is not None else status.HTTP_404_NOT_FOUND,
+            status=response_status,
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
         if data is not None:

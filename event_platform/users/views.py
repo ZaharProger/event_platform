@@ -3,6 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.authentication import SessionAuthentication, BasicAuthentication
 from django.contrib.auth import login, logout
 from django.db.transaction import atomic
+from django.db.models import Q
 from django.core.mail import send_mail
 from django.conf import settings
 from rest_framework import status
@@ -48,6 +49,9 @@ class LoginView(APIView):
 
 
 class LogoutView(APIView):
+    authentication_classes = [SessionAuthentication, BasicAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
         logout(request)
         return Response(
@@ -92,7 +96,7 @@ class AccountDataView(APIView):
     def post(self, request):
         found_passport = UserPassport.objects.filter(username=request.user.username)
 
-        if len(found_passport) != 0:
+        if len(found_passport) != 0 and found_passport[0].is_superuser:
             with atomic():
                 letters_digits = ascii_letters + digits
 
@@ -123,10 +127,14 @@ class AccountDataView(APIView):
                 from_email = settings.EMAIL_HOST_USER
                 recipient_list = [request.data['email']]
                 send_mail(subject, message, from_email, recipient_list)
+            
+            response_status = status.HTTP_200_OK
+        else:
+            response_status = status.HTTP_403_FORBIDDEN
 
         return Response(
             {'message': ''},
-            status=status.HTTP_200_OK,
+            status=response_status,
             content_type='application/json'
         )
 
@@ -134,13 +142,16 @@ class AccountDataView(APIView):
         found_passport = UserPassport.objects.filter(username=request.user.username)
         user_to_delete = request.GET.get('id', None)
 
-        if len(found_passport) != 0 and user_to_delete is not None:
+        if len(found_passport) != 0 and user_to_delete is not None and found_passport[0].is_superuser:
             for user in UserProfile.objects.filter(pk=user_to_delete):
                 user.delete()
+            response_status = status.HTTP_200_OK
+        else:
+            response_status = status.HTTP_403_FORBIDDEN
 
         return Response(
             {'message': ''},
-            status=status.HTTP_200_OK,
+            status=response_status,
             content_type='application/json'
         )
     
@@ -150,46 +161,53 @@ class UserGroupsView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        found_passport = UserPassport.objects.filter(username=request.user.username)
         group_name = request.GET.get('name', None)
         templates_path = os.path.join('event_platform', 'static')
 
-        if group_name is None:
-            odd_dir_list = ['export', '.DS_Store']
-            data = [{'name': dir} for dir in os.listdir(templates_path) if dir not in odd_dir_list]
-            response_status = status.HTTP_200_OK if len(data) != 0 else status.HTTP_404_NOT_FOUND
-        else:
-            group_users = UserPassport.objects.filter(doc_template=group_name)
-            serialized_group_users = UserPassportSerializer(group_users, many=True).data
-            group_docs = []
-            group_path = os.path.join(templates_path, group_name)
-            with open(os.path.join(group_path, 'config.txt'), 'r') as config:
-                config_lines = config.readlines()
-                doc_index = -1
+        if len(found_passport) != 0 and found_passport[0].is_superuser:
+            if group_name is None:
+                odd_dir_list = ['export', '.DS_Store']
+                data = [{'name': dir} for dir in os.listdir(templates_path) if \
+                        dir not in odd_dir_list]
+                response_status = status.HTTP_200_OK if len(data) != 0 \
+                    else status.HTTP_404_NOT_FOUND
+            else:
+                group_users = UserPassport.objects.filter(doc_template=group_name)
+                serialized_group_users = UserPassportSerializer(group_users, many=True).data
+                group_docs = []
+                group_path = os.path.join(templates_path, group_name)
+                with open(os.path.join(group_path, 'config.txt'), 'r') as config:
+                    config_lines = config.readlines()
+                    doc_index = -1
 
-                for line in config_lines:
-                    if ':' in line:
-                        group_docs.append({'name': line.strip().split(':')[0], 'fields': []})
-                        doc_index += 1
-                    else:
-                        splitted_line = line.strip().split('|')
-                        group_docs[doc_index]['fields'].append({
-                            'name': splitted_line[0],
-                            'type': splitted_line[1]
-                        })
+                    for line in config_lines:
+                        if ':' in line:
+                            group_docs.append({'name': line.strip().split(':')[0], 'fields': []})
+                            doc_index += 1
+                        else:
+                            splitted_line = line.strip().split('|')
+                            group_docs[doc_index]['fields'].append({
+                                'name': splitted_line[0],
+                                'type': splitted_line[1]
+                            })
             
-            doc_names = [group_doc['name'] for group_doc in group_docs]
-            for doc in os.listdir(group_path):
-                if doc not in ['.DS_Store', 'config.txt']:
-                    splitted_doc = doc.split('.') 
-                    if splitted_doc[0] not in doc_names:
-                        group_docs.append({'name': splitted_doc[0], 'fields': []})
+                doc_names = [group_doc['name'] for group_doc in group_docs]
+                for doc in os.listdir(group_path):
+                    if doc not in ['.DS_Store', 'config.txt']:
+                        splitted_doc = doc.split('.') 
+                        if splitted_doc[0] not in doc_names:
+                            group_docs.append({'name': splitted_doc[0], 'fields': []})
             
-            data = {
-                'name': group_name, 
-                'users': serialized_group_users, 
-                'docs': group_docs
-            }
-            response_status = status.HTTP_200_OK
+                data = {
+                    'name': group_name, 
+                    'users': serialized_group_users, 
+                    'docs': group_docs
+                }
+                response_status = status.HTTP_200_OK
+        else:
+            data = []
+            response_status = status.HTTP_403_FORBIDDEN
 
         return Response(
             {'data': data},
@@ -199,28 +217,32 @@ class UserGroupsView(APIView):
 
     def post(self, request):
         found_passport = UserPassport.objects.filter(username=request.user.username)
-        if len(found_passport) != 0:
-            found_passport[0].doc_template = request.data['name']
-            found_passport[0].save()
+        if len(found_passport) != 0 and found_passport[0].is_superuser:
             docs_path = os.path.join('event_platform', 'static', request.data['name'])
             os.mkdir(docs_path)
             with open(os.path.join(docs_path, 'config.txt'), 'x'):
                 pass
+            response_status = status.HTTP_200_OK
+        else:
+            response_status = status.HTTP_403_FORBIDDEN
 
         return Response(
             {'message': ''},
-            status=status.HTTP_200_OK,
+            status=response_status,
             content_type='application/json'
         ) 
 
     def put(self, request):
         found_passport = UserPassport.objects.filter(username=request.user.username)
-        if len(found_passport) != 0:
-            pass
+
+        if len(found_passport) != 0 and found_passport[0].is_superuser:
+            response_status = status.HTTP_200_OK
+        else:
+            response_status = status.HTTP_403_FORBIDDEN
 
         return Response(
             {'message': ''},
-            status=status.HTTP_200_OK,
+            status=response_status,
             content_type='application/json'
         )
 
@@ -228,7 +250,7 @@ class UserGroupsView(APIView):
         found_passport = UserPassport.objects.filter(username=request.user.username)
         group_to_delete = request.GET.get('name', None)
 
-        if len(found_passport) != 0 and group_to_delete is not None:
+        if len(found_passport) != 0 and group_to_delete is not None and found_passport[0].is_superuser:
             passports_to_update = UserPassport.objects.filter(doc_template=group_to_delete)
             for passport in passports_to_update:
                 passport.doc_template = ''
@@ -239,9 +261,13 @@ class UserGroupsView(APIView):
                 os.remove(os.path.join(group_path, group_file))
             os.rmdir(group_path)
 
+            response_status = status.HTTP_200_OK
+        else:
+            response_status = status.HTTP_403_FORBIDDEN
+
         return Response(
             {'message': ''},
-            status=status.HTTP_200_OK,
+            status=response_status,
             content_type='application/json'
         )
 
@@ -251,12 +277,14 @@ class UsersView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        found_passport = UserPassport.objects.filter(username=request.user.username)
         event_id = request.GET.get('id', None)
-        if event_id is not None:
+
+        if event_id is not None and len(found_passport) != 0 and found_passport[0].is_staff:
             found_event = Event.objects.filter(pk=event_id)
             if len(found_event) != 0:
                 data = UserPassportSerializer(
-                    UserPassport.objects.filter(is_superuser=False), 
+                    UserPassport.objects.filter(~Q(pk=found_passport[0].pk), is_superuser=False), 
                     many=True
                 ).data
 
@@ -266,15 +294,16 @@ class UsersView(APIView):
                         user=UserProfile.objects.filter(pk=data[i]['user']['id'])[0]
                     )
                     data[i]['is_event_member'] = len(found_relation) != 0
-                    data[i]['is_organizer'] = len(found_relation)!= 0 and \
-                        found_relation[0].is_organizer
             else:
                 data = []
+
+            response_status = status.HTTP_200_OK
         else:
             data = []
+            response_status = status.HTTP_403_FORBIDDEN
 
         return Response(
             {'data': data},
-            status=status.HTTP_200_OK,
+            status=response_status,
             content_type='application/json'
         ) 
