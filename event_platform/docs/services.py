@@ -45,7 +45,7 @@ class BuilderShema:
             start_color=Color('aaaaaa')
         )
 
-        doc_fields = DocField.objects.filter(doc=doc)
+        doc_fields = DocField.objects.filter(doc=doc).order_by('id')
         field_values = {field: FieldValue.objects.filter(field=field) for field in doc_fields}
 
         doc_col = 1

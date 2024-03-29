@@ -15,6 +15,8 @@ from .serializers import UserPassportSerializer, UserProfileSerializer
 
 from events.models import Event, EventUser
 
+from docs.models import Doc
+
 import os
 from string import ascii_letters, digits
 from random import choice
@@ -183,7 +185,10 @@ class UserGroupsView(APIView):
 
                     for line in config_lines:
                         if ':' in line:
-                            group_docs.append({'name': line.strip().split(':')[0], 'fields': []})
+                            group_docs.append({
+                                'name': line.strip().split(':')[0], 
+                                'fields': []
+                            })
                             doc_index += 1
                         else:
                             splitted_line = line.strip().split('|')
@@ -193,11 +198,25 @@ class UserGroupsView(APIView):
                             })
             
                 doc_names = [group_doc['name'] for group_doc in group_docs]
-                for doc in os.listdir(group_path):
+                group_doc_files = os.listdir(group_path)
+
+                for doc in group_doc_files:
                     if doc not in ['.DS_Store', 'config.txt']:
                         splitted_doc = doc.split('.') 
                         if splitted_doc[0] not in doc_names:
-                            group_docs.append({'name': splitted_doc[0], 'fields': []})
+                            group_docs.append({
+                                'name': splitted_doc[0], 
+                                'fields': []
+                            })
+                        
+                for i in range(len(group_doc_files)):
+                    found_index = [j for j in range(len(group_docs)) \
+                                   if group_docs[j]['name'] in group_doc_files[i]]
+                    if len(found_index) != 0:
+                        group_docs[found_index[0]]['doc_template'] = os.path.join(
+                            group_path,
+                            group_doc_files[i]
+                        )
             
                 data = {
                     'name': group_name, 
@@ -220,8 +239,10 @@ class UserGroupsView(APIView):
         if len(found_passport) != 0 and found_passport[0].is_superuser:
             docs_path = os.path.join('event_platform', 'static', request.data['name'])
             os.mkdir(docs_path)
-            with open(os.path.join(docs_path, 'config.txt'), 'x'):
-                pass
+            with open(os.path.join(docs_path, 'config.txt'), 'w') as f:
+                for choice in Doc.DocTypes.choices:
+                    f.write(f'{choice[0]}:\n')
+
             response_status = status.HTTP_200_OK
         else:
             response_status = status.HTTP_403_FORBIDDEN
@@ -239,7 +260,7 @@ class UserGroupsView(APIView):
             UserPassport.objects \
                 .filter(doc_template=request.data['old_name']) \
                 .update(doc_template=request.data['name'])
-            
+                
             group_path = os.path.join('event_platform', 'static')
             old_path = os.path.join(group_path, request.data['old_name'])
             new_path = os.path.join(group_path, request.data['name'])

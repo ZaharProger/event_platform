@@ -124,3 +124,53 @@ class DocsView(APIView):
             response['Content-Disposition'] = f'attachment; filename="{found_doc[0].name}.xlsx"'
 
         return response
+
+
+class TemplatesView(APIView):
+    authentication_classes = [SessionAuthentication, BasicAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        found_passport = UserPassport.objects.filter(username=request.user.username)
+        data = {}
+
+        if len(found_passport) != 0 and found_passport[0].is_superuser:
+            if request.data['upload']:
+                template_file = request.FILES['doc_template']
+                docs_path = os.path.join('event_platform', 'static', request.data['name'])
+                with open(os.path.join(docs_path, template_file.name), 'wb') as f:
+                    for chunk in template_file.chunks():
+                        f.write(chunk)
+
+                response = HttpResponse(
+                    data,
+                    status=status.HTTP_200_OK,
+                    content_type='application/json'
+                )
+            else:
+                filename = ''
+                with open(request.data['doc_template'], 'rb') as template_file:
+                    data = template_file.read()
+                    filename = os.path.basename(template_file.name)
+
+                _, file_extension = os.path.splitext(request.data['doc_template'])
+                if file_extension == '.docx' or file_extension == '.doc':
+                    content_type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                else:
+                    content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+
+                response = HttpResponse(
+                    data,
+                    status=status.HTTP_200_OK,
+                    content_type=content_type
+                )
+                response['Content-Disposition'] = f'attachment; filename="{filename}{file_extension}"'
+        else:
+            response = HttpResponse(
+                data,
+                status=status.HTTP_404_NOT_FOUND,
+                content_type='application/json'
+            )
+        
+        return response
+

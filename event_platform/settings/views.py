@@ -4,7 +4,7 @@ from rest_framework.authentication import SessionAuthentication, BasicAuthentica
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 
-from docs.models import Doc
+from docs.models import Doc, DocField
 from tasks.models import Task
 from events.models import Event
 
@@ -19,6 +19,9 @@ class SettingsView(APIView):
             'doc_types': Doc.DocTypes.choices,
             'task_states': Task.TaskStates.choices
         }
+        if request.user.is_superuser:
+            labels_choices['field_types'] = DocField.FieldTypes.choices
+
         choices_dict = {}
         for key, value in labels_choices.items():
             choices_dict[key] = [{'label': item[1], 'value': item[0]}  for item in value]
