@@ -236,6 +236,15 @@ class UserGroupsView(APIView):
         found_passport = UserPassport.objects.filter(username=request.user.username)
 
         if len(found_passport) != 0 and found_passport[0].is_superuser:
+            UserPassport.objects \
+                .filter(doc_template=request.data['old_name']) \
+                .update(doc_template=request.data['name'])
+            
+            group_path = os.path.join('event_platform', 'static')
+            old_path = os.path.join(group_path, request.data['old_name'])
+            new_path = os.path.join(group_path, request.data['name'])
+            os.rename(old_path, new_path)
+
             response_status = status.HTTP_200_OK
         else:
             response_status = status.HTTP_403_FORBIDDEN
