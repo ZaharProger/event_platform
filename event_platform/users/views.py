@@ -197,18 +197,7 @@ class UserGroupsView(APIView):
                                 'type': splitted_line[1]
                             })
             
-                doc_names = [group_doc['name'] for group_doc in group_docs]
                 group_doc_files = os.listdir(group_path)
-
-                for doc in group_doc_files:
-                    if doc not in ['.DS_Store', 'config.txt']:
-                        splitted_doc = doc.split('.') 
-                        if splitted_doc[0] not in doc_names:
-                            group_docs.append({
-                                'name': splitted_doc[0], 
-                                'fields': []
-                            })
-                        
                 for i in range(len(group_doc_files)):
                     found_index = [j for j in range(len(group_docs)) \
                                    if group_docs[j]['name'] in group_doc_files[i]]
@@ -240,8 +229,9 @@ class UserGroupsView(APIView):
             docs_path = os.path.join('event_platform', 'static', request.data['name'])
             os.mkdir(docs_path)
             with open(os.path.join(docs_path, 'config.txt'), 'w') as f:
-                for choice in Doc.DocTypes.choices:
-                    f.write(f'{choice[0]}:\n')
+                for i in range(len(Doc.DocTypes.choices)):
+                    last = i == len(Doc.DocTypes.choices) - 1
+                    f.write(f'{Doc.DocTypes.choices[i][0]}:{'' if last else '\n'}')
 
             response_status = status.HTTP_200_OK
         else:
