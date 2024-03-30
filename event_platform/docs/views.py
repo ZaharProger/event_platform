@@ -174,3 +174,51 @@ class TemplatesView(APIView):
         
         return response
 
+
+    def put(self, request):
+        found_passport = UserPassport.objects.filter(username=request.user.username)
+
+        if len(found_passport) != 0 and found_passport[0].is_superuser:
+            docs_path = os.path.join('event_platform', 'static', request.data['group_name'])
+            config_lines = []
+
+            with open(os.path.join(docs_path, 'config.txt'), 'r') as config:
+                config_lines = config.readlines()
+            
+            found_doc_line = [i for i in range(len(config_lines)) \
+                              if ':' in config_lines[i] \
+                                and request.data['doc_name'] in config_lines[i]]
+            for i in range(found_doc_line[0] + 1, len(config_lines)):
+                if ':' in config_lines[i]:
+                    break
+                else:
+                    config_lines[i] = ''
+            config_lines = [line for line in config_lines if line != '']
+
+            for i in range(len(request.data['fields'][0]['values'])):
+                value_pair = {
+                    'name': request.data['fields'][0]['values'][i]['value'], 
+                    'type': request.data['fields'][1]['values'][i]['value']
+                }
+                new_line = f'{value_pair['name']}|{value_pair['type']}\n'
+
+                if found_doc_line[0] == len(config_lines) - 1:
+                    config_lines.append(new_line)
+                else:
+                    config_lines.insert(
+                        found_doc_line[0] + i + 1, 
+                        new_line
+                    )
+            
+            with open(os.path.join(docs_path, 'config.txt'), 'w') as config:
+                config.write(''.join(config_lines))
+            
+            response_status = status.HTTP_200_OK
+        else:
+            response_status = status.HTTP_403_FORBIDDEN
+        
+        return Response(
+            {'message': ''},
+            status=response_status,
+            content_type='application/json'
+        )

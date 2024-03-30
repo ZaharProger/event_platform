@@ -15,7 +15,7 @@ from .serializers import UserPassportSerializer, UserProfileSerializer
 
 from events.models import Event, EventUser
 
-from docs.models import Doc
+from docs.models import Doc, DocField
 
 import os
 from string import ascii_letters, digits
@@ -182,21 +182,37 @@ class UserGroupsView(APIView):
                 with open(os.path.join(group_path, 'config.txt'), 'r') as config:
                     config_lines = config.readlines()
                     doc_index = -1
+                    value_index = 0
 
                     for line in config_lines:
                         if ':' in line:
                             group_docs.append({
-                                'name': line.strip().split(':')[0], 
-                                'fields': [],
+                                'name': line.strip().split(':')[0],
+                                'fields': [
+                                    {
+                                        'id': 1,
+                                        'name': 'Наименование поля',
+                                        'field_type': DocField.FieldTypes.TEXT,
+                                        'values': []
+                                    },
+                                    {
+                                        'id': 2,
+                                        'name': 'Тип поля',
+                                        'field_type': 'select',
+                                        'values': []
+                                    }
+                                ],
                                 'doc_template': None
                             })
                             doc_index += 1
                         else:
                             splitted_line = line.strip().split('|')
-                            group_docs[doc_index]['fields'].append({
-                                'name': splitted_line[0],
-                                'type': splitted_line[1]
-                            })
+                            for i in range(len(splitted_line)):
+                                group_docs[doc_index]['fields'][i]['values'].append({
+                                    'id': value_index,
+                                    'value': splitted_line[i]
+                                })
+                                value_index += 1
             
                 group_doc_files = os.listdir(group_path)
                 for i in range(len(group_doc_files)):
