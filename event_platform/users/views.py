@@ -187,7 +187,8 @@ class UserGroupsView(APIView):
                         if ':' in line:
                             group_docs.append({
                                 'name': line.strip().split(':')[0], 
-                                'fields': []
+                                'fields': [],
+                                'doc_template': None
                             })
                             doc_index += 1
                         else:
