@@ -16,6 +16,8 @@ class SettingsView(APIView):
     def get(self, request):
         labels_choices = {
             'event_types': Event.EventTypes.choices,
+            'event_levels': Event.EventLevels.choices,
+            'event_characters': Event.EventCharacters.choices,
             'doc_types': Doc.DocTypes.choices,
             'task_states': Task.TaskStates.choices
         }

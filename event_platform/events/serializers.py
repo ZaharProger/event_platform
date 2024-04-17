@@ -26,7 +26,8 @@ class EventInfoSerializer(ModelSerializer):
     class Meta:
         model = Event
         fields = (
-            'id', 'name', 'place', 'users', 'event_type', 'is_online', 'docs',
+            'id', 'name', 'place', 'users', 'event_form', 'event_type',
+            'event_level', 'event_character', 'is_online', 'for_students', 'docs',
             'datetime_start', 'datetime_end', 'is_complete', 'description'
         )
 
@@ -35,7 +36,8 @@ class EventNotNestedSerializer(ModelSerializer):
     class Meta:
         model = Event
         fields = (
-            'id', 'name', 'place', 'event_type', 'is_online',
+            'id', 'name', 'place', 'event_form', 'event_type',
+            'event_level', 'event_character', 'is_online', 'for_students',
             'datetime_start', 'datetime_end', 'is_complete', 'description'
         )
 
@@ -47,6 +49,7 @@ class EventCardSerializer(ModelSerializer):
     class Meta:
         model = Event
         fields = (
-            'id', 'name', 'place', 'users', 'event_type', 'is_online', 'docs', 'tasks',
+            'id', 'name', 'place', 'users', 'event_form', 'event_type',
+            'event_level', 'event_character', 'is_online', 'for_students', 'docs', 'tasks',
             'datetime_start', 'datetime_end', 'is_complete', 'description'
         )
