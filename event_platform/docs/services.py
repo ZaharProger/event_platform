@@ -13,7 +13,7 @@ class DocBuilder(ABC):
         self.shema = builder_schema
 
     @abstractmethod
-    def build(self, doc: Doc, docs_path: str, export_path: str):
+    def build(self, doc: Doc, doc_path: str, export_path: str):
         ...
 
 
