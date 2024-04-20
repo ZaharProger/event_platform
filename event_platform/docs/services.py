@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 
 import openpyxl
 from openpyxl.styles import Font, Alignment, Color, PatternFill, Border
-import os
 from datetime import datetime, timezone, timedelta
 
 from docs.models import Doc, DocField, FieldValue
@@ -10,17 +9,17 @@ from tasks.models import Task, UserTask
 
 
 class DocBuilder(ABC):
+    def __init__(self, builder_schema=None):
+        self.shema = builder_schema
+
     @abstractmethod
-    def build(self, doc: Doc, docs_path: str, export_path: str, file_name: str):
+    def build(self, doc: Doc, docs_path: str, export_path: str):
         ...
 
 
 class TableDocBuilder(DocBuilder):
-    def __init__(self, builder_schema=None):
-        self.shema = builder_schema
-
-    def build(self, doc: Doc, docs_path: str, export_path: str, file_name: str):
-        workbook = openpyxl.load_workbook(os.path.join(docs_path, file_name))
+    def build(self, doc: Doc, doc_path: str, export_path: str):
+        workbook = openpyxl.load_workbook(doc_path)
         doc_sheet = workbook.active
         
         doc_sheet.cell(row=1, column=2).value = doc.name

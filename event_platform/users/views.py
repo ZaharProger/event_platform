@@ -172,8 +172,7 @@ class UserGroupsView(APIView):
                 odd_dir_list = ['export', '.DS_Store']
                 data = [{'name': dir} for dir in os.listdir(templates_path) if \
                         dir not in odd_dir_list]
-                response_status = status.HTTP_200_OK if len(data) != 0 \
-                    else status.HTTP_404_NOT_FOUND
+                response_status = status.HTTP_200_OK
             else:
                 group_users = UserPassport.objects.filter(doc_template=group_name)
                 serialized_group_users = UserPassportSerializer(group_users, many=True).data

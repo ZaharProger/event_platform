@@ -73,16 +73,25 @@ class EventsView(APIView):
 
                 docs_path = os.path.join('event_platform', 'static', found_passport[0].doc_template)
                 docs = []
-                for url in os.listdir(docs_path):
-                    splitted_url = url.split('.')
+                with open (os.path.join(docs_path, 'config.txt'), 'r') as config:
+                    config_lines = [line.split(':')[0] for line in config.readlines() \
+                                    if ':' in line]
+
+                for line in config_lines:
                     recognized_doc_type = list(filter(
-                        lambda choice: choice[0] == splitted_url[0] and splitted_url[1] != 'txt', 
+                        lambda choice: choice[0] == line and choice[0] != Doc.DocTypes.REPORT, 
                         Doc.DocTypes.choices)
                     )
                     if len(recognized_doc_type) != 0:
                         doc_type_value = recognized_doc_type[0][0]
+                        url = [filename for filename in os.listdir(docs_path) \
+                               if line in filename]
+                        doc_template_url = os.path.join(
+                            found_passport[0].doc_template, 
+                            url[0] if len(url) != 0 else ''
+                        )
                         new_doc = Doc.objects.create(
-                            template_url=url,
+                            template_url=doc_template_url,
                             doc_type=doc_type_value,
                             name=doc_type_value
                         )

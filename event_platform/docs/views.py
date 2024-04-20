@@ -8,8 +8,9 @@ import os
 
 from django.http import HttpResponse
 from django.db.transaction import atomic
+from django.db.models import Q
 
-from .models import Doc, FieldValue
+from .models import Doc, FieldValue, DocField
 from .forms import FieldValueForm
 from .services import TableDocBuilder, RoadmapSchema, MoneySchema, BuilderShema
 from .serializers import FieldValueSerializer
@@ -82,36 +83,28 @@ class DocsView(APIView):
         data = None
 
         if len(found_passport) != 0 and len(found_doc) != 0 and not found_passport[0].is_superuser:
-            docs_path = os.path.join(
+            doc_path = os.path.join(
                 'event_platform', 
                 'static', 
-                found_passport[0].doc_template
+                found_doc[0].template_url
             )
-            file = [url for url in os.listdir(docs_path) 
-                    if found_doc[0].doc_type == url.split('.')[0]]
-            
-            if len(file) != 0:
-                export_path = os.path.join(
-                    'event_platform', 
-                    'static', 
-                    'export', 
-                    f'{found_doc[0].name}.xlsx'
-                )
-                file_name = file[0]
+            export_path = os.path.join(
+                'event_platform', 
+                'static', 
+                'export', 
+                f'{found_doc[0].name}.xlsx'
+            )
 
-                DocsView.doc_builders[found_doc[0].doc_type].build(
-                    found_doc[0],
-                    docs_path,
-                    export_path,
-                    file_name
-                )
+            DocsView.doc_builders[found_doc[0].doc_type].build(
+                found_doc[0],
+                doc_path,
+                export_path,
+            )
 
-                with open(os.path.join(export_path), 'rb') as created_file:
-                    data = created_file.read()
-                os.remove(export_path)
-                response_status = status.HTTP_200_OK
-            else:
-                response_status = status.HTTP_404_NOT_FOUND
+            with open(os.path.join(export_path), 'rb') as created_file:
+                data = created_file.read()
+            os.remove(export_path)
+            response_status = status.HTTP_200_OK
         else:
             response_status = status.HTTP_403_FORBIDDEN
 
@@ -177,6 +170,8 @@ class TemplatesView(APIView):
 
     def put(self, request):
         found_passport = UserPassport.objects.filter(username=request.user.username)
+        doc_template_url = os.path.join(request.data['group_name'], request.data['doc_name'])
+        found_docs = Doc.objects.filter(template_url__contains=doc_template_url)
 
         if len(found_passport) != 0 and found_passport[0].is_superuser:
             docs_path = os.path.join('event_platform', 'static', request.data['group_name'])
@@ -195,15 +190,41 @@ class TemplatesView(APIView):
                     config_lines[i] = ''
             config_lines = [line for line in config_lines if line != '']
 
+            value_pairs = []
             for i in range(len(request.data['fields'][0]['values'])):
-                value_pair = {
+                value_pairs.append({
                     'name': request.data['fields'][0]['values'][i]['value'], 
                     'type': request.data['fields'][1]['values'][i]['value']
-                }
-                new_line = f'{value_pair['name']}|{value_pair['type']}\n'
+                })
+
+            for doc in found_docs:
+                for field in doc.fields.all():
+                    field_dict = { 'name': field.name, 'type': field.field_type }
+                    if field_dict not in value_pairs:
+                        field.delete()
+
+            for i in range(len(value_pairs)):
+                new_line = f'{value_pairs[i]['name']}|{value_pairs[i]['type']}\n'
+
+                for doc in found_docs:
+                    found_doc_fields = doc.fields \
+                        .filter(Q(field_type=value_pairs[i]['type']) & \
+                                 Q(name=value_pairs[i]['name']))
+                    if len(found_doc_fields) == 0:
+                        new_field = DocField.objects.create(
+                            doc=doc,
+                            name=value_pairs[i]['name'],
+                            field_type=value_pairs[i]['type']
+                        )
+                        new_field.save()
+                        new_value = FieldValue.objects.create(
+                            field=new_field,
+                            value=''
+                        )
+                        new_value.save()
 
                 if found_doc_line[0] == len(config_lines) - 1:
-                    config_lines.append(new_line)
+                    config_lines.append(f'\n{new_line}')
                 else:
                     config_lines.insert(
                         found_doc_line[0] + i + 1, 
