@@ -10,9 +10,9 @@ from rest_framework.permissions import IsAuthenticated
 from .models import Event, EventUser
 from .forms import EventForm
 from users.models import UserPassport, UserProfile
-from docs.models import DocField, Doc
+from docs.models import DocField, Doc, FieldValue
 from .serializers import EventInfoSerializer, EventCardSerializer, EventNotNestedSerializer
-from tasks.models import UserTask
+from tasks.models import UserTask, Task
 
 from string import ascii_uppercase, digits
 from random import choice
@@ -88,7 +88,7 @@ class EventsView(APIView):
                                if line in filename]
                         doc_template_url = os.path.join(
                             found_passport[0].doc_template, 
-                            url[0] if len(url) != 0 else ''
+                            url[0] if len(url) != 0 else doc_type_value
                         )
                         new_doc = Doc.objects.create(
                             template_url=doc_template_url,
@@ -121,6 +121,11 @@ class EventsView(APIView):
                                 field_type=splitted_field[1]
                             )
                             new_field.save()
+                            new_value = FieldValue.objects.create(
+                                field=new_field,
+                                value=''
+                            )
+                            new_value.save()
 
                     added_event.docs.add(doc)
 
@@ -190,6 +195,7 @@ class EventsView(APIView):
             content_type='application/json'
         )   
 
+
 class JoinEventView(APIView):
     authentication_classes = [SessionAuthentication, BasicAuthentication]
     permission_classes = [IsAuthenticated]
@@ -247,7 +253,7 @@ class CompleteEventView(APIView):
             status=response_status,
             content_type='application/json'
         ) 
-    
+
 
 class InviteEventUsersView(APIView):
     authentication_classes = [SessionAuthentication, BasicAuthentication]
@@ -284,6 +290,92 @@ class InviteEventUsersView(APIView):
                     recipient_list = [found_user[0].email]
                     send_mail(subject, message, from_email, recipient_list)
                     
+            response_status = status.HTTP_200_OK
+        else:
+            response_status = status.HTTP_403_FORBIDDEN
+
+        return Response(
+            {'message': ''},
+            status=response_status,
+            content_type='application/json'
+        )
+
+
+class CopyEventView(APIView):
+    authentication_classes = [SessionAuthentication, BasicAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        found_passport = UserPassport.objects.filter(username=request.user.username)
+        event_to_copy = request.GET.get('id', None)
+
+        if len(found_passport) != 0 and event_to_copy is not None and found_passport[0].is_staff:
+            found_event = Event.objects.filter(pk=event_to_copy)
+            if len(found_event) != 0:
+                secret_code_symbols = ascii_uppercase + digits
+                with atomic():
+                    new_event = Event.objects.create(
+                        name=found_event[0].name,
+                        event_type=found_event[0].event_type,
+                        event_level=found_event[0].event_level,
+                        event_character=found_event[0].event_character,
+                        event_form=found_event[0].event_form,
+                        is_online=found_event[0].is_online,
+                        for_students=found_event[0].for_students,
+                        is_complete=False,
+                        place=found_event[0].place,
+                        datetime_start=found_event[0].datetime_start,
+                        datetime_end=found_event[0].datetime_end,
+                        description=found_event[0].description,
+                        secret_code=''.join([choice(secret_code_symbols) for _ in range(8)])
+                    )
+                    new_event.save()
+                    for event_user in EventUser.objects.filter(event=found_event[0]):
+                        new_event_user = EventUser.objects.create(
+                            event=new_event,
+                            user=event_user.user,
+                            is_organizer=event_user.is_organizer
+                        )
+                        new_event_user.save()
+                    for doc in Doc.objects.filter(event=found_event[0]):
+                        new_doc = Doc.objects.create(
+                            doc_type=doc.doc_type,
+                            name=doc.name,
+                            template_url=doc.template_url,
+                            event=new_event
+                        )
+                        new_doc.save()
+                        for field in DocField.objects.filter(doc=doc):
+                            new_field = DocField.objects.create(
+                                doc=new_doc,
+                                name=field.name,
+                                field_type=field.field_type
+                            )
+                            new_field.save()
+                            for value in field.values.all():
+                                new_value = FieldValue.objects.create(
+                                    field=new_field,
+                                    value=value.value
+                                )   
+                                new_value.save()
+                    for task in Task.objects.filter(event=found_event[0]):
+                        new_task = Task.objects.create(
+                            event=new_event,
+                            parent=task.parent,
+                            datetime_start=task.datetime_start,
+                            datetime_end=task.datetime_end,
+                            state=task.state,
+                            name=task.name
+                        )
+                        new_task.save()
+                        for user_task in UserTask.objects.filter(task=task):
+                            new_user_task = UserTask.objects.create(
+                                task=new_task,
+                                user=user_task.user,
+                                is_responsible=user_task.is_responsible
+                            )
+                            new_user_task.save()
+
             response_status = status.HTTP_200_OK
         else:
             response_status = status.HTTP_403_FORBIDDEN

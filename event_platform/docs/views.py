@@ -128,12 +128,28 @@ class TemplatesView(APIView):
         data = {}
 
         if len(found_passport) != 0 and found_passport[0].is_superuser:
+            _, file_extension = os.path.splitext(request.data['doc_template'])
+
             if request.data['upload']:
                 template_file = request.FILES['doc_template']
-                docs_path = os.path.join('event_platform', 'static', request.data['name'])
-                with open(os.path.join(docs_path, template_file.name), 'wb') as f:
+                filename = f"{request.data['doc_name']}{file_extension}"
+                doc_path = os.path.join(
+                    'event_platform', 
+                    'static', 
+                    request.data['group_name'],
+                    filename
+                )
+                with open(doc_path, 'wb') as f:
                     for chunk in template_file.chunks():
                         f.write(chunk)
+                
+                for doc in Doc.objects.filter(template_url=request.data['group_name']):
+                    if doc.doc_type == request.data['doc_name']:
+                        doc.template_url = os.path.join(
+                            request.data['group_name'],
+                            filename
+                        )
+                        doc.save()
 
                 response = HttpResponse(
                     data,
@@ -146,7 +162,6 @@ class TemplatesView(APIView):
                     data = template_file.read()
                     filename = os.path.basename(template_file.name)
 
-                _, file_extension = os.path.splitext(request.data['doc_template'])
                 if file_extension == '.docx' or file_extension == '.doc':
                     content_type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
                 else:
@@ -224,12 +239,13 @@ class TemplatesView(APIView):
                         new_value.save()
 
                 if found_doc_line[0] == len(config_lines) - 1:
-                    config_lines.append(f'\n{new_line}')
-                else:
-                    config_lines.insert(
-                        found_doc_line[0] + i + 1, 
-                        new_line
-                    )
+                    if not config_lines[-1].endswith('\n'):
+                        config_lines[-1] = f"{config_lines[-1]}\n"
+                
+                config_lines.insert(
+                    found_doc_line[0] + i + 1, 
+                    new_line
+                )
             
             with open(os.path.join(docs_path, 'config.txt'), 'w') as config:
                 config.write(''.join(config_lines))
